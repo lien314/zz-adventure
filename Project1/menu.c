@@ -1,6 +1,5 @@
 # include<stdio.h>
 # include<stdlib.h>
-# include<conio.h>
 # include"menu.h"
 
 int show_menu(char* menu[], int size, char* title[]) {
@@ -17,7 +16,7 @@ int show_menu(char* menu[], int size, char* title[]) {
 				printf("    %s\n", menu[i]);
 			}
 		}
-		printf("\n使用W/S方向键选择，ENTER确认\n");
+		printf("\n使用W/S键选择，ENTER确认\n");
 		ch = _getch();
 		if (ch == 'w' || ch == 'W') {
 			index--;
