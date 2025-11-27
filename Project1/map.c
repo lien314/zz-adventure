@@ -1,8 +1,13 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <conio.h>
 #include <ctype.h>
 #include <string.h>
+#include <windows.h>
 #include "map.h"
+
+#define MAX_WIDTH  100
+#define MAX_HEIGHT 100
 
 char* get_map_filename(int level) {
     static char filename[20];
@@ -44,12 +49,47 @@ int load_map_from_file(char* filename, char map[MAX_HEIGHT][MAX_WIDTH], int* wid
 }
 
 void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
+    HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_SCREEN_BUFFER_INFO csbi;
+    WORD defaultAttr = 0;
+    if (GetConsoleScreenBufferInfo(hConsole, &csbi)) {
+        defaultAttr = csbi.wAttributes;
+    }
+    else {
+        defaultAttr = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
+    }
+
     for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-            putchar(map[y][x]);
+            char c = map[y][x];
+            WORD attr = defaultAttr;
+
+            switch (c) {
+            case 'P':
+                attr = FOREGROUND_RED | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+                break;
+            case 'T':
+                attr = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_INTENSITY;
+                break;
+            case 'D':
+                attr = FOREGROUND_RED | FOREGROUND_INTENSITY;
+                break;
+            case 'W':
+                attr = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE | FOREGROUND_INTENSITY;
+                break;
+            default:
+                attr = defaultAttr;
+                break;
+            }
+
+            SetConsoleTextAttribute(hConsole, attr);
+            putchar(c);
+            putchar(' ');
+            SetConsoleTextAttribute(hConsole, defaultAttr);
         }
         putchar('\n');
     }
+    SetConsoleTextAttribute(hConsole, defaultAttr);
 }
 
 void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, int mode) {
@@ -99,17 +139,14 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
             char ch = _getch();
             char mv = (char)tolower((unsigned char)ch);
 
-            // q 直接返回主菜单
             if (mv == 'q') {
-                // 在返回前把当前格恢复底层（如果需要）
                 map[playerY][playerX] = underPlayer;
                 return;
             }
 
-            // 允许 i 原地不动或者四方向
             if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') {
                 printf("输入错误，请使用 W/A/S/D/I 或 Q 返回。\n");
-                system("pause");
+                _getch();
                 continue;
             }
 
@@ -133,14 +170,14 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
             if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
                 printf("撞墙了，很痛！（越界）\n");
-                system("pause");
+                _getch();
                 continue;
             }
 
             char target = map[ny][nx];
             if (target == 'W') {
                 printf("撞墙了，很痛！\n");
-                system("pause");
+                _getch();
             }
             else {
                 if (underPlayer == 'D') {
@@ -180,7 +217,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 int c;
                 while ((c = getchar()) != '\n' && c != EOF) {}
                 printf("读取路径失败或为空。\n");
-                system("pause");
+                _getch();
                 return;
             }
 
@@ -198,7 +235,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
                 if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') {
                     printf("预设路径包含非法字符 '%c'，返回主菜单。\n", path[idx]);
-                    system("pause");
+                    _getch();
                     return;
                 }
 
