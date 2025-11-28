@@ -9,13 +9,13 @@
 #define MAX_WIDTH  100
 #define MAX_HEIGHT 100
 
-char* get_map_filename(int level) {
+static char* get_map_filename(int level) {
     static char filename[20];
     snprintf(filename, sizeof(filename), "map_level_%d.txt", level);
     return filename;
 }
 
-int load_map_from_file(char* filename, char map[MAX_HEIGHT][MAX_WIDTH], int* width, int* height, int* treasures) {
+static int load_map_from_file(char* filename, char map[MAX_HEIGHT][MAX_WIDTH], int* width, int* height, int* treasures) {
     FILE* file = fopen(filename, "r");
     if (!file) {
         return 1;
@@ -48,7 +48,7 @@ int load_map_from_file(char* filename, char map[MAX_HEIGHT][MAX_WIDTH], int* wid
     return 0;
 }
 
-void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
+static void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
     HANDLE hConsole = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_SCREEN_BUFFER_INFO csbi;
     WORD defaultAttr = 0;
@@ -96,13 +96,17 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     int consume_HP = 0;
     int step = 0;
     int treasures_found = 0;
-    char path[1000];
+    char path[1000] = {0};
     size_t pathSize = sizeof(path);
     size_t pathIndex = 0;
 
     char map[MAX_HEIGHT][MAX_WIDTH];
     int treasures = 0;
     int playerX = 1, playerY = 1;
+
+    if (width <= 0 || height <= 0) {
+        return;
+    }
 
     for (int y = 0; y < MAX_HEIGHT; y++) {
         for (int x = 0; x < MAX_WIDTH; x++) {
@@ -122,7 +126,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     if (playerY >= height) playerY = height - 1;
     if (playerX < 0) playerX = 0;
     if (playerX >= width) playerX = width - 1;
-
     underPlayer = map[playerY][playerX];
     map[playerY][playerX] = 'P';
 
@@ -146,7 +149,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
             if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') {
                 printf("输入错误，请使用 W/A/S/D/I 或 Q 返回。\n");
-                _getch();
+                system("pause");
                 continue;
             }
 
@@ -170,14 +173,14 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
             if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
                 printf("撞墙了，很痛！（越界）\n");
-                _getch();
+                system("pause");
                 continue;
             }
 
             char target = map[ny][nx];
             if (target == 'W') {
                 printf("撞墙了，很痛！\n");
-                _getch();
+                system("pause");
             }
             else {
                 if (underPlayer == 'D') {
@@ -217,7 +220,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 int c;
                 while ((c = getchar()) != '\n' && c != EOF) {}
                 printf("读取路径失败或为空。\n");
-                _getch();
+                system("pause");
                 return;
             }
 
@@ -235,7 +238,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
                 if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') {
                     printf("预设路径包含非法字符 '%c'，返回主菜单。\n", path[idx]);
-                    _getch();
+                    system("pause");
                     return;
                 }
 

@@ -1,8 +1,9 @@
 # include<stdio.h>
 # include<stdlib.h>
+#include<conio.h>
 # include"menu.h"
 
-int show_menu(char* menu[], int size, char* title[]) {
+int show_menu(const char* menu[], int size, const char* title) {
 	char ch;
 	int index = 0;
 	while (1) {

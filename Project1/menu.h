@@ -1,2 +1,2 @@
 #pragma once
-int show_menu(char* menu[], int size, char* title[]);
+int show_menu(const char* menu[], int size, const char* title);
