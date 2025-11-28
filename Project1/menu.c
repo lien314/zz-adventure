@@ -1,6 +1,7 @@
 # include<stdio.h>
 # include<stdlib.h>
 #include<conio.h>
+#include <ctype.h>
 # include"menu.h"
 
 int show_menu(const char* menu[], int size, const char* title) {
@@ -19,11 +20,12 @@ int show_menu(const char* menu[], int size, const char* title) {
 		}
 		printf("\n使用W/S键选择，ENTER确认\n");
 		ch = _getch();
-		if (ch == 'w' || ch == 'W') {
+		ch = tolower(ch);
+		if (ch == 'w') {
 			index--;
 			if (index < 0) index = size - 1;
 		}
-		else if (ch == 's' || ch == 'S') {
+		else if (ch == 's') {
 			index++;
 			if (index >= size) index = 0;
 		}

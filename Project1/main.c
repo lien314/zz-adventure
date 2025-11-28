@@ -4,8 +4,6 @@
 #include "menu.h"
 #include "map.h"
 
-#define INITIAL_CUSTOM_CAPACITY 3
-
 typedef struct {
     int width;
     int height;
@@ -13,13 +11,9 @@ typedef struct {
 } CustomMap;
 
 int main() {
-    int customCapacity = INITIAL_CUSTOM_CAPACITY;
+    int customCapacity = 3;
     int customCount = 0;
     CustomMap* customMaps = (CustomMap*)malloc(sizeof(CustomMap) * customCapacity);
-    if (!customMaps) {
-        fprintf(stderr, "内存分配失败\n");
-        return 1;
-    }
 
     while (1) {
         char* startmenu[] = { "开始游戏","游戏说明","退出" };
@@ -70,7 +64,7 @@ int main() {
                                 continue;
                             }
                             int ch;
-                            while ((ch = getchar()) != '\n' && ch != EOF) {} // 清行
+                            while ((ch = getchar()) != '\n' && ch != EOF) {}
                             if (w <= 0 || h <= 0 || w > MAX_WIDTH || h > MAX_HEIGHT) {
                                 printf("尺寸超出限制，返回定制菜单。\n");
                                 system("pause");
@@ -182,7 +176,7 @@ int main() {
                         else {
                             break;
                         }
-                    } 
+                    }
                 }
                 break;
                 case 3:

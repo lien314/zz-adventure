@@ -140,7 +140,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
         if (mode == 0) {
             char ch = _getch();
-            char mv = (char)tolower((unsigned char)ch);
+            char mv = tolower(ch);
 
             if (mv == 'q') {
                 map[playerY][playerX] = underPlayer;
@@ -319,7 +319,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
             displayPath[di] = '\0';
 
             printf("恭喜你，小猪找到了所有宝藏！\n行动路径：%s\n消耗的体力：%d\n找到的宝箱的数量：%d\n",
-                displayPath, consume_HP, treasures);
+                displayPath, consume_HP, treasures_found);
             system("pause");
             return;
         }

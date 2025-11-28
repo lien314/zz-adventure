@@ -13,6 +13,9 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="docs">
+      <UniqueIdentifier>{9a270131-5b1d-4cac-adf7-1ce508cf90c4}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="main.c">
@@ -39,5 +42,8 @@
   <ItemGroup>
     <Text Include="map_level_1.txt" />
     <Text Include="map_level_2.txt" />
+    <Text Include="readme.md">
+      <Filter>docs</Filter>
+    </Text>
   </ItemGroup>
 </Project>

@@ -142,6 +142,7 @@
   <ItemGroup>
     <Text Include="map_level_1.txt" />
     <Text Include="map_level_2.txt" />
+    <Text Include="readme.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
