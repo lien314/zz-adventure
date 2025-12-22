@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <windows.h>
+#include <time.h>
 #include "menu.h"
 #include "map.h"
 
@@ -11,9 +13,9 @@ typedef struct {
 } CustomMap;
 
 int main() {
-    int customCapacity = 3;
+   /* int customCapacity = 3;
     int customCount = 0;
-    CustomMap* customMaps = (CustomMap*)malloc(sizeof(CustomMap) * customCapacity);
+    CustomMap* customMaps = (CustomMap*)malloc(sizeof(CustomMap) * customCapacity);*/
 
     while (1) {
         char* startmenu[] = { "开始游戏","游戏说明","退出" };
@@ -24,166 +26,119 @@ int main() {
             printf("在遥远的文字王国，生活着一只勇敢的猪猪 。\n它听说王国的某个角落藏有无尽的财富与宝藏，这激发了它的冒险精神。\n于是小猪决定不顾一切踏上寻宝之旅，穿越二维世界的迷宫地形，寻找传说中的伟大财富。\n这一路惊险又刺激，你准备好了吗？\n");
             system("pause");
             {
-                char* levels[] = { "第一关","第二关--小心脚下？","自定义","返回主菜单" };
-                int choice2 = show_menu(levels, 4, "请选择关卡");
+                /* discover .map files in maps directory */
+               // const char *mapdir = "..\\..\\Projects\\Project1\\x64\\Debug\\maps";
+                char pattern[MAX_PATH];
+                /* look for .map files inside the "maps" subfolder next to the exe */
+                snprintf(pattern, sizeof(pattern), "%s\\maps\\*.map", get_exe_dir());
+                WIN32_FIND_DATAA fd;
+                HANDLE h = FindFirstFileA(pattern, &fd);
+                char *filenames[64] = {0};
+                char *labels[64] = {0};
+                int count = 0;
+                if (h != INVALID_HANDLE_VALUE) {
+                    do {
+                        if (!(fd.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) {
+                            size_t n = strlen(fd.cFileName);
+                            filenames[count] = (char*)malloc(n + 1);
+                            if (filenames[count]) strcpy_s(filenames[count], n + 1, fd.cFileName);
+
+                            /* build label, include save info if exists */
+                            char saveInfo[256] = {0};
+                            int has = has_save(fd.cFileName, saveInfo, sizeof(saveInfo));
+                            size_t lablen = n + 64 + (has ? strlen(saveInfo) : 0);
+                            labels[count] = (char*)malloc(lablen);
+                            if (labels[count]) {
+                                if (has) snprintf(labels[count], lablen, "开始<%s>（上次）", fd.cFileName);
+                                else snprintf(labels[count], lablen, "开始<%s>", fd.cFileName);
+                            }
+
+                            count++;
+                            if (count >= 62) break;
+                        }
+                    } while (FindNextFileA(h, &fd));
+                    FindClose(h);
+                }
+
+                /* build menu: discovered maps + 排行榜 + 返回 */
+                int menuCount = count + 2;
+                char** menu = malloc(sizeof(char*) * menuCount);
+               // const char** menu = (const char**)malloc(sizeof(char*) * menuCount);
+                for (int i = 0; i < count; ++i) menu[i] = labels[i] ? labels[i] : filenames[i];
+                menu[count] = "排行榜";
+                menu[count + 1] = "返回主菜单";
+
+                int sel = show_menu(menu, menuCount, "请选择关卡");
                 system("cls");
-
-                switch (choice2) {
-                case 0:
-                {
-                    char* pattern_menu[] = { "0：实时模式","1：编程模式" };
-                    int mode = show_menu(pattern_menu, 2, "请选择控制模式：");
-                    system("cls");
-                    maps(1, mode);
-                }
-                break;
-                case 1:
-                {
-                    char* pattern_menu[] = { "0：实时模式","1：编程模式" };
-                    int mode = show_menu(pattern_menu, 2, "请选择控制模式：");
-                    system("cls");
-                    printf("第二关开始！小心脚下的陷阱！\n");
-                    system("pause");
-                    maps(2, mode);
-                }
-                break;
-                case 2:
-                {
-                    while (1) {
-                        char* custom_menu[] = { "创建新定制关卡","选择已有定制关卡","返回" };
-                        int c = show_menu(custom_menu, 3, "定制关卡管理");
+                if (sel >= 0 && sel < count) {
+                    /* if there is a save for this map, offer to load it */
+                    const char* sf = save_filename(filenames[sel]);
+                    FILE *sfh = NULL;
+                    int hasSave = 0;
+                    long long ts = 0; int smode=0, sconsume=0, sstep=0, streasures_found=0, sw=0, sh=0;
+                    if (fopen_s(&sfh, sf, "rb") == 0 && sfh) {
+                        if (fread(&ts, sizeof(ts), 1, sfh) == 1 && fread(&smode, sizeof(smode), 1, sfh) == 1) {
+                            fread(&sconsume, sizeof(sconsume), 1, sfh);
+                            fread(&sstep, sizeof(sstep), 1, sfh);
+                            fread(&streasures_found, sizeof(streasures_found), 1, sfh);
+                            fread(&sw, sizeof(sw), 1, sfh);
+                            fread(&sh, sizeof(sh), 1, sfh);
+                            hasSave = 1;
+                        }
+                        fclose(sfh);
+                    }
+                    if (hasSave) {
+                        time_t t = (time_t)ts; struct tm tmv; localtime_s(&tmv, &t); char timestr[64];
+                        strftime(timestr, sizeof(timestr), "%Y-%m-%d %H:%M:%S", &tmv);
+                        int totalTreasures = get_map_treasure_count(filenames[sel]);
+                        char titlebuf[256];
+                        snprintf(titlebuf, sizeof(titlebuf), "是否加载上次的进度？\n%s\n退出时间：%s\n进度：已找到 %d / %d 个宝箱\n请选择：",
+                            filenames[sel], timestr, streasures_found, totalTreasures);
+                        const char* resumeOptions[] = { "是", "否" };
+                        int r = show_menu((char**)resumeOptions, 2, titlebuf);
                         system("cls");
-                        if (c == 0) {
-                            int w = 0, h = 0;
-                            printf("请输入地图宽度和高度（空格分隔，最大 %d x %d）：\n", MAX_WIDTH, MAX_HEIGHT);
-                            if (scanf_s("%d %d", &w, &h) != 2) {
-                                int ch;
-                                while ((ch = getchar()) != '\n' && ch != EOF) {}
-                                printf("输入格式错误，返回定制菜单。\n");
-                                system("pause");
-                                continue;
-                            }
-                            int ch;
-                            while ((ch = getchar()) != '\n' && ch != EOF) {}
-                            if (w <= 0 || h <= 0 || w > MAX_WIDTH || h > MAX_HEIGHT) {
-                                printf("尺寸超出限制，返回定制菜单。\n");
-                                system("pause");
-                                continue;
-                            }
-
-                            char buffer[MAX_WIDTH + 4];
-                            char tempMap[MAX_HEIGHT][MAX_WIDTH];
-                            int readFailed = 0;
-                            for (int y = 0; y < h; y++) {
-                                printf("请输入第 %d 行（至少 %d 字符，支持 'W','D','T',' ' 等）：\n", y + 1, w);
-                                if (!fgets(buffer, sizeof(buffer), stdin)) {
-                                    readFailed = 1;
-                                    break;
-                                }
-                                size_t len = strlen(buffer);
-                                if (len > 0 && buffer[len - 1] == '\n') buffer[len - 1] = '\0';
-                                for (int x = 0; x < w; x++) {
-                                    if ((int)strlen(buffer) > x) tempMap[y][x] = buffer[x];
-                                    else tempMap[y][x] = ' ';
-                                }
-                            }
-                            if (readFailed) {
-                                printf("读取失败，取消创建。\n");
-                                system("pause");
-                                continue;
-                            }
-
-                            system("cls");
-                            printf("预览地图：\n");
-                            for (int y = 0; y < h; y++) {
-                                for (int x = 0; x < w; x++) putchar(tempMap[y][x]);
-                                putchar('\n');
-                            }
-                            printf("\n保存此地图？（Y保存 / 其它取消）\n");
-                            char resp = (char)getchar();
-                            while ((ch = getchar()) != '\n' && ch != EOF) {}
-                            if (resp == 'Y' || resp == 'y') {
-                                if (customCount >= customCapacity) {
-                                    int newCap = customCapacity * 2;
-                                    CustomMap* n = (CustomMap*)realloc(customMaps, sizeof(CustomMap) * newCap);
-                                    if (!n) {
-                                        printf("无法分配更多内存以保存定制关卡，保存失败。\n");
-                                        system("pause");
-                                        continue;
-                                    }
-                                    customMaps = n;
-                                    customCapacity = newCap;
-                                }
-                                customMaps[customCount].width = w;
-                                customMaps[customCount].height = h;
-                                for (int yy = 0; yy < h; yy++) {
-                                    for (int xx = 0; xx < w; xx++) {
-                                        customMaps[customCount].data[yy][xx] = tempMap[yy][xx];
-                                    }
-                                    for (int xx = w; xx < MAX_WIDTH; xx++) customMaps[customCount].data[yy][xx] = ' ';
-                                }
-                                for (int yy = h; yy < MAX_HEIGHT; yy++) {
-                                    for (int xx = 0; xx < MAX_WIDTH; xx++) customMaps[customCount].data[yy][xx] = ' ';
-                                }
-                                customCount++;
-                                printf("已保存为定制关卡 %d。\n", customCount);
-                                system("pause");
-                            }
-                            else {
-                                printf("已取消保存。\n");
-                                system("pause");
-                            }
+                        if (r == 0) {
+                            /* load saved session directly */
+                            load_and_run_save(filenames[sel], NULL);
+                            /* cleanup and continue */
+                            for (int i = 0; i < count; ++i) { free(filenames[i]); free(labels[i]); }
+                            free(menu);
+                            continue;
+                        } else {
+                            /* discard save and start new */
+                            delete_save_file(filenames[sel]);
                         }
-                        else if (c == 1) {
-                            if (customCount == 0) {
-                                printf("当前没有已保存的定制关卡。\n");
-                                system("pause");
-                                continue;
-                            }
-                            int listSize = customCount + 1;
-                            char** list = (char**)malloc(sizeof(char*) * listSize);
-                            if (!list) {
-                                printf("内存分配失败。\n");
-                                system("pause");
-                                continue;
-                            }
-                            for (int i = 0; i < customCount; i++) {
-                                char* p = (char*)malloc(64);
-                                if (!p) { p = NULL; }
-                                else {
-                                    snprintf(p, 64, "定制关卡 %d ( %dx%d )", i + 1, customMaps[i].width, customMaps[i].height);
-                                }
-                                list[i] = p ? p : "错误项";
-                            }
-                            list[listSize - 1] = "返回";
+                    }
 
-                            int sel = show_menu(list, listSize, "选择定制关卡");
-
-                            for (int i = 0; i < customCount; i++) {
-                                if (list[i] && list[i] != "错误项") free(list[i]);
-                            }
-                            free(list);
-
-                            if (sel >= 0 && sel < customCount) {
-                                char* pattern_menu[] = { "0：实时模式","1：编程模式" };
-                                int mode = show_menu(pattern_menu, 2, "请选择控制模式：");
-                                system("cls");
-                                maps_from_buffer(customMaps[sel].data, customMaps[sel].width, customMaps[sel].height, mode);
-                            }
-                            else{
-                            }
-                        }
-                        else {
-                            break;
+                    /* ask player name for leaderboard */
+                    char namebuf[64] = {0};
+                    printf("请输入你的名字（用于排行榜，回车确认）：");
+                    fflush(stdout);
+                    if (fgets(namebuf, sizeof(namebuf), stdin)) {
+                        size_t ln = strlen(namebuf); if (ln>0 && namebuf[ln-1]=='\n') namebuf[ln-1]=0;
+                    }
+                    const char* modeMenu[] = { "0：实时模式", "1：编程模式" };
+                    int mode = show_menu(modeMenu, 2, "请选择控制模式：");
+                    system("cls");
+                    maps_from_file(filenames[sel], mode, namebuf[0]?namebuf:NULL);
+                } else if (sel == count) {
+                    /* show leaderboard chooser */
+                    if (count == 0) {
+                        printf("没有可用的关卡。\n");
+                        system("pause");
+                    } else {
+                        char* lbmenu[64];
+                        for (int i = 0; i < count; ++i) lbmenu[i] = filenames[i];
+                        int lsel = show_menu(lbmenu, count, "请选择要查看排行榜的关卡");
+                        system("cls");
+                        if (lsel >= 0 && lsel < count) {
+                            show_leaderboard_for_map(filenames[lsel]);
                         }
                     }
                 }
-                break;
-                case 3:
-                    break;
-                default:
-                    printf("无效选择！\n");
-                }
+
+                for (int i = 0; i < count; ++i) { free(filenames[i]); free(labels[i]); }
+                free(menu);
             }
             break;
 
@@ -193,7 +148,7 @@ int main() {
             break;
         case 2:
             printf("退出游戏，再见！\n");
-            free(customMaps);
+            //free(customMaps);
             exit(0);
         default:
             printf("无效选择！\n");
