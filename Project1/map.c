@@ -24,7 +24,7 @@ const char* get_exe_dir() {
         *last = '\0';
     }
 
-/* 获取当前可执行文件所在目录（用于定位 maps、save、leaderboard 文件） */
+    /* 获取当前可执行文件所在目录（用于定位 maps、save、leaderboard 文件） */
     return exeDir;
 }
 
@@ -614,7 +614,7 @@ void show_leaderboard_for_map(const char* mapFile) {
         system("pause");
         return;
     }
-    
+
     for (int i = 0; i < ec; ++i) for (int j = i + 1; j < ec; ++j) {
         if (entries[j].hp < entries[i].hp) {
             Entry t = entries[i]; entries[i] = entries[j]; entries[j] = t;
@@ -697,7 +697,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
             if (mv == 'y') {
                 if (current && current->prev) {
                     current = current->prev;
-                    /* restore state */
                     for (int yy = 0; yy < height; yy++) for (int xx = 0; xx < width; xx++) map[yy][xx] = current->mapSnapshot[yy * width + xx];
                     playerX = current->playerX;
                     playerY = current->playerY;
@@ -841,6 +840,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 /* clear any existing save since challenge completed */
                 delete_save_file(mapFile);
                 system("pause");
+                free_all(current);
                 return;
             }
         }
@@ -862,7 +862,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 char mv = (char)tolower((unsigned char)path[idx]);
 
                 if (mv == 'q') {
-                    /* save progress to file when player explicitly quits */
                     save_snapshot(map, width, height, mode, playerX, playerY, path, pathSize, pathIndex, mapFile, consume_HP, step, treasures_found, underPlayer);
                     map[playerY][playerX] = underPlayer;
                     free_all(current);
@@ -872,6 +871,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') {
                     printf("预设路径包含非法字符 '%c'，返回主菜单。\n", path[idx]);
                     system("pause");
+                    free_all(current);
                     return;
                 }
 
@@ -925,6 +925,37 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                             }
                         }
                     }
+                }
+
+                /* 在编辑模式下每步后检查是否已收集完全部宝藏并结束关卡 */
+                if (treasures_found == treasures) {
+                    system("cls");
+                    print_map(map, width, height);
+
+                    char displayPath[1000];
+                    size_t di = 0;
+                    for (size_t i = 0; i < pathIndex && di + 1 < sizeof(displayPath); i++) {
+                        char c = path[i];
+                        char out = c;
+                        if (c == 'w') out = 'U';
+                        else if (c == 's') out = 'D';
+                        else if (c == 'a') out = 'L';
+                        else if (c == 'd') out = 'R';
+                        else if (c == 'i') out = 'I';
+                        else out = toupper((unsigned char)c);
+                        displayPath[di++] = out;
+                    }
+                    displayPath[di] = '\0';
+
+                    printf("恭喜你，小猪找到了所有宝藏！\n行动路径：%s\n消耗的体力：%d\n找到的宝箱的数量：%d\n",
+                        displayPath, consume_HP, treasures_found);
+                    if (playerName && playerName[0]) append_leaderboard_entry(mapFile, playerName, consume_HP);
+                    else append_leaderboard_entry(mapFile, "匿名", consume_HP);
+                    /* clear any existing save since challenge completed */
+                    delete_save_file(mapFile);
+                    system("pause");
+                    free_all(current);
+                    return;
                 }
             }
         }

@@ -29,8 +29,8 @@ int main() {
                 WIN32_FIND_DATAA fd;
                 HANDLE h = FindFirstFileA(pattern, &fd);
                 /* filenames 保存实际文件名，labels 保存显示在菜单上的标签（可能包含存档信息） */
-                char *filenames[64] = {0};
-                char *labels[64] = {0};
+                char* filenames[64] = { 0 };
+                char* labels[64] = { 0 };
                 int count = 0;
                 if (h != INVALID_HANDLE_VALUE) {
                     do {
@@ -68,9 +68,9 @@ int main() {
                 system("cls");
                 if (sel >= 0 && sel < count) {
                     const char* sf = save_filename(filenames[sel]);
-                    FILE *sfh = NULL;
+                    FILE* sfh = NULL;
                     int hasSave = 0;
-                    long long ts = 0; int smode=0, sconsume=0, sstep=0, streasures_found=0, sw=0, sh=0;
+                    long long ts = 0; int smode = 0, sconsume = 0, sstep = 0, streasures_found = 0, sw = 0, sh = 0;
                     if (fopen_s(&sfh, sf, "rb") == 0 && sfh) {
                         if (fread(&ts, sizeof(ts), 1, sfh) == 1 && fread(&smode, sizeof(smode), 1, sfh) == 1) {
                             fread(&sconsume, sizeof(sconsume), 1, sfh);
@@ -98,28 +98,31 @@ int main() {
                             for (int i = 0; i < count; ++i) { free(filenames[i]); free(labels[i]); }
                             free(menu);
                             continue;
-                        } else {
+                        }
+                        else {
                             /* 用户选择不加载：删除已有存档，开始新游戏 */
                             delete_save_file(filenames[sel]);
                         }
                     }
 
 
-                    char namebuf[64] = {0};
+                    char namebuf[64] = { 0 };
                     printf("请输入你的名字（用于排行榜，回车确认）：");
                     fflush(stdout);
                     if (fgets(namebuf, sizeof(namebuf), stdin)) {
-                        size_t ln = strlen(namebuf); if (ln>0 && namebuf[ln-1]=='\n') namebuf[ln-1]=0;
+                        size_t ln = strlen(namebuf); if (ln > 0 && namebuf[ln - 1] == '\n') namebuf[ln - 1] = 0;
                     }
                     const char* modeMenu[] = { "0：实时模式", "1：编程模式" };
                     int mode = show_menu(modeMenu, 2, "请选择控制模式：");
                     system("cls");
-                    maps_from_file(filenames[sel], mode, namebuf[0]?namebuf:NULL);
-                } else if (sel == count) {
+                    maps_from_file(filenames[sel], mode, namebuf[0] ? namebuf : NULL);
+                }
+                else if (sel == count) {
                     if (count == 0) {
                         printf("没有可用的关卡。\n");
                         system("pause");
-                    } else {
+                    }
+                    else {
                         char* lbmenu[64];
                         for (int i = 0; i < count; ++i) lbmenu[i] = filenames[i];
                         int lsel = show_menu(lbmenu, count, "请选择要查看排行榜的关卡");

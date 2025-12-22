@@ -29,7 +29,7 @@ int get_map_treasure_count(const char* mapFile);
 int game_save(GameState* gs, const char* mapFile);
 
 // 游戏状态相关
-// 从地图缓冲区创建游戏状态对象（用于 AI/逻辑层测试）
+// 从地图缓冲区创建游戏状态对象
 GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height);
 // 释放 GameState
 void game_destroy(GameState* gs);
