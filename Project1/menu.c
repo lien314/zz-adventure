@@ -18,7 +18,7 @@ int show_menu(const char* menu[], int size, const char* title) {
 				printf("    %s\n", menu[i]);
 			}
 		}
-		printf("\n使用W/S键选择，ENTER确认\n");
+		printf("\n使用W / S键选择，ENTER确认\n");
 		ch = _getch();
 		ch = tolower(ch);
 		if (ch == 'w') {

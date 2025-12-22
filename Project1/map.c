@@ -5,22 +5,30 @@
 #include <string.h>
 #include <time.h>
 #include <windows.h>
-//#include <shlwapi.h>
 #include "map.h"
 #define MAX_WIDTH  100
 #define MAX_HEIGHT 100
+
+/*
+ * map.c - 游戏地图与运行时逻辑实现
+ * 说明：该文件负责从 .map 文件读取地图、渲染到控制台、
+ *      响应玩家输入、维护撤销/重做历史、以及存档/加载和排行榜功能。
+ */
 
 
 const char* get_exe_dir() {
     static char exeDir[MAX_PATH];
     GetModuleFileNameA(NULL, exeDir, MAX_PATH);
-    // PathRemoveFileSpecA(exeDir); // 去掉 exe 文件名，只保留目录
     char* last = strrchr(exeDir, '\\');
     if (last) {
         *last = '\0';
     }
+
+/* 获取当前可执行文件所在目录（用于定位 maps、save、leaderboard 文件） */
     return exeDir;
 }
+
+/* 构造指定地图文件对应的存档文件名（save_<mapFile>.dat） */
 
 const char* get_map_filepath(const char* filename) {
     static char fullpath[MAX_PATH];
@@ -34,7 +42,6 @@ const char* save_filename(const char* mapFile) {
     return fname;
 }
 
-/* save current snapshot to disk (consistent format) */
 static int save_snapshot(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height,
     int mode, int playerX, int playerY, char* pathBuf, size_t pathSize, size_t pathIndex,
     const char* mapFile, int consume_HP, int step, int treasures_found, char underPlayer)
@@ -60,7 +67,7 @@ static int save_snapshot(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height,
     else {
         char z = 0; for (size_t i = 0; i < 1000; i++) fwrite(&z, 1, 1, sf);
     }
-    /* write map snapshot: write underlying characters (replace P if present with under) */
+
     size_t msize = (size_t)width * (size_t)height;
     for (int yy = 0; yy < height; yy++) {
         for (int xx = 0; xx < width; xx++) {
@@ -72,7 +79,7 @@ static int save_snapshot(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height,
     fclose(sf);
     return 1;
 }
-/* 枚举 maps 文件夹下的所有地图文件，展示为菜单项 */
+
 void list_map_files() {
     char searchPath[MAX_PATH];
     snprintf(searchPath, sizeof(searchPath), "%s\\maps\\*.map", get_exe_dir());
@@ -159,8 +166,6 @@ int load_and_run_save(const char* mapFile, const char* playerName) {
     char src[MAX_HEIGHT][MAX_WIDTH];
     for (int y = 0; y < height && y < MAX_HEIGHT; y++) for (int x = 0; x < width && x < MAX_WIDTH; x++) src[y][x] = mapSnap[y * width + x];
     free(mapSnap);
-    /* no file-provided start coords when loading save snapshot */
-    /* pass playerName so restored session can know who (mode is in file) */
     maps_from_buffer(src, width, height, mode, -1, -1, mapFile, playerName);
     return 1;
 }
@@ -183,6 +188,10 @@ int get_map_treasure_count(const char* mapFile) {
     fclose(f);
     return treasures;
 }
+
+/* 从地图文件加载到内存并交给 maps_from_buffer 处理
+   mode: 0 实时模式，1 编程模式；playerName 可用于排行榜记录
+*/
 void maps_from_file(const char* mapFile, int mode, const char* playerName) {
     char filepath[MAX_PATH];
     snprintf(filepath, sizeof(filepath), "%s\\maps\\%s", get_exe_dir(), mapFile);
@@ -194,15 +203,13 @@ void maps_from_file(const char* mapFile, int mode, const char* playerName) {
     }
 
     int w = 0, h = 0;
-    /* read first non-empty line and parse width/height robustly (handles BOM) */
     char line[512];
     while (fgets(line, sizeof(line), f)) {
-        /* skip leading UTF-8 BOM if present */
         unsigned char* u = (unsigned char*)line;
         if (u[0] == 0xEF && u[1] == 0xBB && u[2] == 0xBF) {
             memmove(line, line + 3, strlen(line) - 2);
         }
-        /* skip empty lines */
+
         char* p = line;
         while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
         if (*p == '\0') continue;
@@ -216,13 +223,11 @@ void maps_from_file(const char* mapFile, int mode, const char* playerName) {
     }
 
     int startx = 0, starty = 0;
-    /* read next non-empty line as optional start coordinates */
     while (fgets(line, sizeof(line), f)) {
         char* p = line;
         while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
         if (*p == '\0') continue;
         if (sscanf_s(p, "%d %d", &startx, &starty) == 2) break;
-        /* if parsing failed, treat this line as the first map data line by rewinding file pointer */
         fseek(f, -((long)strlen(line)), SEEK_CUR);
         startx = 0; starty = 0;
         break;
@@ -253,7 +258,6 @@ void maps_from_file(const char* mapFile, int mode, const char* playerName) {
         while (col < w) src[y][col++] = ' ';
     }
 
-    /* close file and call maps_from_buffer passing start coords (do not modify src) */
     fclose(f);
     maps_from_buffer(src, w, h, mode, startx, starty, mapFile, playerName);
 }
@@ -325,7 +329,7 @@ static void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
 
 
 typedef struct StateNode {
-    char* mapSnapshot; /* width*height bytes */
+    char* mapSnapshot;
     int playerX;
     int playerY;
     char underPlayer;
@@ -345,7 +349,7 @@ static StateNode* create_node_from_state(char map[MAX_HEIGHT][MAX_WIDTH], int wi
     StateNode* n = (StateNode*)malloc(sizeof(StateNode));
     if (!n) return NULL;
     size_t msize = (size_t)width * (size_t)height;
-    if (msize == 0) msize = 1; /* ensure non-zero allocation to avoid malloc(0) */
+    if (msize == 0) msize = 1;
     n->mapSnapshot = (char*)malloc(msize);
     n->pathBuf = (char*)malloc(pathSize);
     if (!n->mapSnapshot || !n->pathBuf) {
@@ -400,7 +404,6 @@ static void free_all(StateNode* n) {
     }
 }
 
-/* --- Game logic abstraction (no I/O) --- */
 typedef struct GameState {
     char map[MAX_HEIGHT][MAX_WIDTH];
     int width;
@@ -415,7 +418,7 @@ typedef struct GameState {
     char path[1000];
     size_t pathIndex;
     size_t pathSize;
-    StateNode* current; /* undo/redo pointer */
+    StateNode* current;
 } GameState;
 
 static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
@@ -423,7 +426,6 @@ static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int w
     if (!gs) return NULL;
     gs->width = width;
     gs->height = height;
-    /* ensure positive dimensions to avoid analyzer/UB */
     if (gs->width <= 0) gs->width = 1;
     if (gs->height <= 0) gs->height = 1;
     gs->consume_HP = 0;
@@ -433,7 +435,6 @@ static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int w
     gs->pathSize = sizeof(gs->path);
     gs->pathIndex = 0;
     gs->path[0] = '\0';
-    /* init map */
     for (int y = 0; y < MAX_HEIGHT; y++) for (int x = 0; x < MAX_WIDTH; x++) gs->map[y][x] = ' ';
     for (int y = 0; y < height && y < MAX_HEIGHT; y++) {
         for (int x = 0; x < width && x < MAX_WIDTH; x++) {
@@ -487,7 +488,6 @@ static int game_redo(GameState* gs) {
     return 0;
 }
 
-/* apply a single move; return codes: 0 = continue, 1 = won, 2 = quit */
 static int game_apply_move(GameState* gs, char mv) {
     if (!gs) return 0;
     if (mv == 'q') return 2;
@@ -495,7 +495,6 @@ static int game_apply_move(GameState* gs, char mv) {
     if (mv == 'z') { game_redo(gs); return 0; }
     if (mv != 'w' && mv != 'a' && mv != 's' && mv != 'd' && mv != 'i') return 0;
 
-    /* use clamped current position for safe indexing */
     int curX = gs->playerX, curY = gs->playerY;
     clamp_to_bounds(gs, &curX, &curY);
     int nx = curX, ny = curY;
@@ -515,7 +514,6 @@ static int game_apply_move(GameState* gs, char mv) {
     }
 
     if (nx < 0 || nx >= gs->width || ny < 0 || ny >= gs->height) return 0;
-    /* safe read using validated indices */
     int safe_nx = nx, safe_ny = ny;
     clamp_to_bounds(gs, &safe_nx, &safe_ny);
     char target = gs->map[safe_ny][safe_nx];
@@ -526,7 +524,6 @@ static int game_apply_move(GameState* gs, char mv) {
     gs->consume_HP++; gs->step++;
     if (gs->underPlayer == 'D') gs->consume_HP++;
 
-    /* write back using clamped previous pos and validated new pos */
     gs->map[curY][curX] = gs->underPlayer;
     gs->underPlayer = target; gs->playerX = nx; gs->playerY = ny;
     int newX = gs->playerX, newY = gs->playerY; clamp_to_bounds(gs, &newX, &newY);
@@ -553,7 +550,7 @@ static int game_save(GameState* gs, const char* mapFile) {
     if (fopen_s(&sf, sfname, "wb") != 0 || !sf) return 0;
     long long ts = (long long)time(NULL);
     fwrite(&ts, sizeof(ts), 1, sf);
-    int mode = 0; /* mode unknown here - UI should pass if needed; store 0 */
+    int mode = 0;
     fwrite(&mode, sizeof(mode), 1, sf);
     fwrite(&gs->consume_HP, sizeof(gs->consume_HP), 1, sf);
     fwrite(&gs->step, sizeof(gs->step), 1, sf);
@@ -591,7 +588,7 @@ void show_leaderboard_for_map(const char* mapFile) {
     FILE* f = NULL;
     if (fopen_s(&f, path, "r") != 0 || !f) {
         printf("该关卡暂无排行榜记录。\n");
-		system("pause");
+        system("pause");
         return;
     }
     typedef struct { long long ts; char name[128]; int hp; } Entry;
@@ -614,10 +611,10 @@ void show_leaderboard_for_map(const char* mapFile) {
     fclose(f);
     if (ec == 0) {
         printf("该关卡暂无排行榜记录。\n");
-		system("pause");
+        system("pause");
         return;
     }
-    /* sort by hp ascending */
+    
     for (int i = 0; i < ec; ++i) for (int j = i + 1; j < ec; ++j) {
         if (entries[j].hp < entries[i].hp) {
             Entry t = entries[i]; entries[i] = entries[j]; entries[j] = t;
@@ -632,7 +629,6 @@ void show_leaderboard_for_map(const char* mapFile) {
     system("pause");
 }
 
-/* (previously had a forward declaration for an extracted run loop) */
 
 void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, int mode, int startx, int starty, const char* mapFile, const char* playerName) {
     int consume_HP = 0;
@@ -645,7 +641,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     char map[MAX_HEIGHT][MAX_WIDTH];
     int treasures = 0;
     int playerX = 1, playerY = 1;
-    /* if file provided start coordinates are valid, use them */
     if (startx >= 0 && startx < width && starty >= 0 && starty < height) {
         playerX = startx;
         playerY = starty;
@@ -678,10 +673,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
 
     pathIndex = 0;
     path[0] = '\0';
-
-    /* use top-level StateNode and helper functions */
     StateNode* current = NULL;
-    /* push initial state */
     current = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
         consume_HP, step, treasures_found, pathIndex, path, pathSize);
 
@@ -696,14 +688,12 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
             char mv = (char)tolower((unsigned char)ch);
 
             if (mv == 'q') {
-                /* save progress to file */
                 save_snapshot(map, width, height, mode, playerX, playerY, path, pathSize, pathIndex, mapFile, consume_HP, step, treasures_found, underPlayer);
                 map[playerY][playerX] = underPlayer;
                 free_all(current);
                 return;
             }
 
-            /* Undo (Y) */
             if (mv == 'y') {
                 if (current && current->prev) {
                     current = current->prev;
@@ -722,7 +712,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 continue;
             }
 
-            /* Redo (Z) */
             if (mv == 'z') {
                 if (current && current->next) {
                     current = current->next;
@@ -746,16 +735,13 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 continue;
             }
 
-            /* compute target for movement first */
             int nx = playerX, ny = playerY;
             if (mv == 'w') ny--;
             else if (mv == 's') ny++;
             else if (mv == 'a') nx--;
             else if (mv == 'd') nx++;
 
-            /* For 'i' (stay), always consume and record */
             if (mv == 'i') {
-                /* clear redo history when making a new action */
                 if (current) free_forward(current);
                 if (pathIndex + 1 < pathSize) {
                     path[pathIndex++] = mv;
@@ -763,11 +749,9 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 }
                 consume_HP++;
                 step++;
-                /* push new state */
                 StateNode* n = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
                     consume_HP, step, treasures_found, pathIndex, path, pathSize);
                 if (n) {
-                    /* attach */
                     n->prev = current;
                     if (current) current->next = n;
                     current = n;
@@ -775,7 +759,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 continue;
             }
 
-            /* movement: check bounds */
             if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
                 printf("撞墙了，很痛！（越界）\n");
                 system("pause");
@@ -789,10 +772,8 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 continue;
             }
 
-            /* valid move: clear redo history */
             if (current) free_forward(current);
 
-            /* record path and cost */
             if (pathIndex + 1 < pathSize) {
                 path[pathIndex++] = mv;
                 path[pathIndex] = '\0';
@@ -953,7 +934,6 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     }
 }
 
-/* removed duplicate extracted run loop - maps_from_buffer contains the game loop inline */
 
 void maps(const char* mapFile, int mode) {
     char map[MAX_HEIGHT][MAX_WIDTH];
@@ -961,6 +941,5 @@ void maps(const char* mapFile, int mode) {
     char* filename = get_map_filepath(mapFile);
     if (load_map_from_file(filename, map, &width, &height, &treasures) != 0)
         return;
-    /* no file-provided start coordinates here -> pass -1 to indicate none */
     maps_from_buffer(map, width, height, mode, -1, -1, mapFile, NULL);
 }
