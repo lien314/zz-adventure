@@ -65,8 +65,9 @@ int main() {
                 char** menu = malloc(sizeof(char*) * menuCount);
                // const char** menu = (const char**)malloc(sizeof(char*) * menuCount);
                 for (int i = 0; i < count; ++i) menu[i] = labels[i] ? labels[i] : filenames[i];
-                menu[count] = "排行榜";
-                menu[count + 1] = "返回主菜单";
+                if (menu != NULL) {
+                    menu[count + 1] = "返回主菜单";
+                }
 
                 int sel = show_menu(menu, menuCount, "请选择关卡");
                 system("cls");

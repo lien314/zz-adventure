@@ -14,7 +14,7 @@
 const char* get_exe_dir() {
     static char exeDir[MAX_PATH];
     GetModuleFileNameA(NULL, exeDir, MAX_PATH);
-   // PathRemoveFileSpecA(exeDir); // 去掉 exe 文件名，只保留目录
+    // PathRemoveFileSpecA(exeDir); // 去掉 exe 文件名，只保留目录
     char* last = strrchr(exeDir, '\\');
     if (last) {
         *last = '\0';
@@ -36,11 +36,11 @@ const char* save_filename(const char* mapFile) {
 
 /* save current snapshot to disk (consistent format) */
 static int save_snapshot(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height,
-    int mode, int playerX, int playerY, char *pathBuf, size_t pathSize, size_t pathIndex,
+    int mode, int playerX, int playerY, char* pathBuf, size_t pathSize, size_t pathIndex,
     const char* mapFile, int consume_HP, int step, int treasures_found, char underPlayer)
 {
-    char *sfname = (char*)save_filename(mapFile);
-    FILE *sf = NULL;
+    char* sfname = (char*)save_filename(mapFile);
+    FILE* sf = NULL;
     if (fopen_s(&sf, sfname, "wb") != 0 || !sf) return 0;
     long long ts = (long long)time(NULL);
     fwrite(&ts, sizeof(ts), 1, sf);
@@ -58,12 +58,12 @@ static int save_snapshot(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height,
     /* write fixed-size path buffer */
     if (pathBuf && pathSize > 0) fwrite(pathBuf, 1, pathSize, sf);
     else {
-        char z = 0; for (size_t i=0;i<1000;i++) fwrite(&z,1,1,sf);
+        char z = 0; for (size_t i = 0; i < 1000; i++) fwrite(&z, 1, 1, sf);
     }
     /* write map snapshot: write underlying characters (replace P if present with under) */
     size_t msize = (size_t)width * (size_t)height;
-    for (int yy=0; yy<height; yy++) {
-        for (int xx=0; xx<width; xx++) {
+    for (int yy = 0; yy < height; yy++) {
+        for (int xx = 0; xx < width; xx++) {
             char ch = src[yy][xx];
             if (yy == playerY && xx == playerX) ch = underPlayer;
             fwrite(&ch, 1, 1, sf);
@@ -95,13 +95,13 @@ void list_map_files() {
     FindClose(hFind);
 }
 
-int has_save(const char* mapFile, char *infoBuf, size_t bufSize) {
-    char *fname = save_filename(mapFile);
-    FILE *f = NULL;
+int has_save(const char* mapFile, char* infoBuf, size_t bufSize) {
+    char* fname = save_filename(mapFile);
+    FILE* f = NULL;
     if (fopen_s(&f, fname, "rb") != 0 || !f) return 0;
     long long ts = 0;
     int mode = 0, consume_HP = 0, step = 0, treasures_found = 0;
-    int width=0,height=0;
+    int width = 0, height = 0;
     if (fread(&ts, sizeof(ts), 1, f) != 1) { fclose(f); return 0; }
     if (fread(&mode, sizeof(mode), 1, f) != 1) { fclose(f); return 0; }
     if (fread(&consume_HP, sizeof(consume_HP), 1, f) != 1) { fclose(f); return 0; }
@@ -117,24 +117,24 @@ int has_save(const char* mapFile, char *infoBuf, size_t bufSize) {
         char timestr[64];
         strftime(timestr, sizeof(timestr), "%Y-%m-%d %H:%M:%S", &tmv);
         snprintf(infoBuf, bufSize, "%s | 模式:%s 体力:%d 步数:%d 找到:%d 大小:%dx%d",
-            timestr, mode==0?"实时":"编程", consume_HP, step, treasures_found, width, height);
+            timestr, mode == 0 ? "实时" : "编程", consume_HP, step, treasures_found, width, height);
     }
     return 1;
 }
 
 int delete_save_file(const char* mapFile) {
-    char *fname = save_filename(mapFile);
-    return (remove(fname)==0)?1:0 ;
+    char* fname = save_filename(mapFile);
+    return (remove(fname) == 0) ? 1 : 0;
 }
 
 int load_and_run_save(const char* mapFile, const char* playerName) {
-    char *fname = save_filename(mapFile);
-    FILE *f = NULL;
+    char* fname = save_filename(mapFile);
+    FILE* f = NULL;
     if (fopen_s(&f, fname, "rb") != 0 || !f) return 0;
     long long ts = 0;
     int mode = 0, consume_HP = 0, step = 0, treasures_found = 0;
-    int width=0,height=0;
-    int playerX=0, playerY=0;
+    int width = 0, height = 0;
+    int playerX = 0, playerY = 0;
     char underPlayer = ' ';
     size_t pathSize = 1000;
     size_t pathIndex = 0;
@@ -149,15 +149,15 @@ int load_and_run_save(const char* mapFile, const char* playerName) {
     if (fread(&playerY, sizeof(playerY), 1, f) != 1) { fclose(f); return 0; }
     if (fread(&underPlayer, sizeof(underPlayer), 1, f) != 1) { fclose(f); return 0; }
     if (fread(&pathIndex, sizeof(pathIndex), 1, f) != 1) { fclose(f); return 0; }
-    char pathBuf[1000] = {0};
+    char pathBuf[1000] = { 0 };
     fread(pathBuf, 1, pathSize, f);
     size_t msize = (size_t)width * (size_t)height;
-    char *mapSnap = (char*)malloc(msize ? msize : 1);
+    char* mapSnap = (char*)malloc(msize ? msize : 1);
     if (!mapSnap) { fclose(f); return 0; }
     if (fread(mapSnap, 1, msize, f) != msize) { free(mapSnap); fclose(f); return 0; }
     fclose(f);
     char src[MAX_HEIGHT][MAX_WIDTH];
-    for (int y=0;y<height && y<MAX_HEIGHT;y++) for (int x=0;x<width && x<MAX_WIDTH;x++) src[y][x] = mapSnap[y*width + x];
+    for (int y = 0; y < height && y < MAX_HEIGHT; y++) for (int x = 0; x < width && x < MAX_WIDTH; x++) src[y][x] = mapSnap[y * width + x];
     free(mapSnap);
     /* no file-provided start coords when loading save snapshot */
     /* pass playerName so restored session can know who (mode is in file) */
@@ -170,15 +170,15 @@ int get_map_treasure_count(const char* mapFile) {
     snprintf(filepath, sizeof(filepath), "%s\\maps\\%s", get_exe_dir(), mapFile);
     FILE* f = NULL;
     if (fopen_s(&f, filepath, "r") != 0 || !f) return 0;
-    int w,h;
+    int w, h;
     if (fscanf_s(f, "%d %d", &w, &h) != 2) { fclose(f); return 0; }
-    int startx,starty;
+    int startx, starty;
     if (fscanf_s(f, "%d %d", &startx, &starty) != 2) { /* ignore */ }
     int treasures = 0;
     char buf[4096];
-    for (int y=0;y<h && fgets(buf,sizeof(buf),f); y++) {
+    for (int y = 0; y < h && fgets(buf, sizeof(buf), f); y++) {
         char* ctx = NULL; char* tok = strtok_s(buf, " \t\r\n", &ctx);
-        while (tok) { if (atoi(tok)==3) treasures++; tok = strtok_s(NULL, " \t\r\n", &ctx); }
+        while (tok) { if (atoi(tok) == 3) treasures++; tok = strtok_s(NULL, " \t\r\n", &ctx); }
     }
     fclose(f);
     return treasures;
@@ -198,12 +198,12 @@ void maps_from_file(const char* mapFile, int mode, const char* playerName) {
     char line[512];
     while (fgets(line, sizeof(line), f)) {
         /* skip leading UTF-8 BOM if present */
-        unsigned char *u = (unsigned char*)line;
+        unsigned char* u = (unsigned char*)line;
         if (u[0] == 0xEF && u[1] == 0xBB && u[2] == 0xBF) {
-            memmove(line, line+3, strlen(line)-2);
+            memmove(line, line + 3, strlen(line) - 2);
         }
         /* skip empty lines */
-        char *p = line;
+        char* p = line;
         while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
         if (*p == '\0') continue;
         if (sscanf_s(p, "%d %d", &w, &h) == 2) break;
@@ -218,7 +218,7 @@ void maps_from_file(const char* mapFile, int mode, const char* playerName) {
     int startx = 0, starty = 0;
     /* read next non-empty line as optional start coordinates */
     while (fgets(line, sizeof(line), f)) {
-        char *p = line;
+        char* p = line;
         while (*p == ' ' || *p == '\t' || *p == '\r' || *p == '\n') p++;
         if (*p == '\0') continue;
         if (sscanf_s(p, "%d %d", &startx, &starty) == 2) break;
@@ -297,7 +297,8 @@ static void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
     WORD defaultAttr = 0;
     if (GetConsoleScreenBufferInfo(hConsole, &csbi)) {
         defaultAttr = csbi.wAttributes;
-    } else {
+    }
+    else {
         defaultAttr = FOREGROUND_RED | FOREGROUND_GREEN | FOREGROUND_BLUE;
     }
 
@@ -324,7 +325,7 @@ static void print_map(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
 
 
 typedef struct StateNode {
-    char *mapSnapshot; /* width*height bytes */
+    char* mapSnapshot; /* width*height bytes */
     int playerX;
     int playerY;
     char underPlayer;
@@ -332,16 +333,16 @@ typedef struct StateNode {
     int step;
     int treasures_found;
     size_t pathIndex;
-    char *pathBuf;
-    struct StateNode *prev;
-    struct StateNode *next;
+    char* pathBuf;
+    struct StateNode* prev;
+    struct StateNode* next;
 } StateNode;
 
 static StateNode* create_node_from_state(char map[MAX_HEIGHT][MAX_WIDTH], int width, int height,
     int playerX, int playerY, char underPlayer, int consume_HP, int step, int treasures_found,
-    size_t pathIndex, char *path, size_t pathSize)
+    size_t pathIndex, char* path, size_t pathSize)
 {
-    StateNode *n = (StateNode*)malloc(sizeof(StateNode));
+    StateNode* n = (StateNode*)malloc(sizeof(StateNode));
     if (!n) return NULL;
     size_t msize = (size_t)width * (size_t)height;
     if (msize == 0) msize = 1; /* ensure non-zero allocation to avoid malloc(0) */
@@ -374,10 +375,10 @@ static StateNode* create_node_from_state(char map[MAX_HEIGHT][MAX_WIDTH], int wi
     return n;
 }
 
-static void free_forward(StateNode *n) {
-    StateNode *cur = n ? n->next : NULL;
+static void free_forward(StateNode* n) {
+    StateNode* cur = n ? n->next : NULL;
     while (cur) {
-        StateNode *tmp = cur->next;
+        StateNode* tmp = cur->next;
         free(cur->mapSnapshot);
         free(cur->pathBuf);
         free(cur);
@@ -386,12 +387,12 @@ static void free_forward(StateNode *n) {
     if (n) n->next = NULL;
 }
 
-static void free_all(StateNode *n) {
+static void free_all(StateNode* n) {
     if (!n) return;
     while (n->prev) n = n->prev;
-    StateNode *cur = n;
+    StateNode* cur = n;
     while (cur) {
-        StateNode *tmp = cur->next;
+        StateNode* tmp = cur->next;
         free(cur->mapSnapshot);
         free(cur->pathBuf);
         free(cur);
@@ -414,11 +415,11 @@ typedef struct GameState {
     char path[1000];
     size_t pathIndex;
     size_t pathSize;
-    StateNode *current; /* undo/redo pointer */
+    StateNode* current; /* undo/redo pointer */
 } GameState;
 
 static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height) {
-    GameState *gs = (GameState*)malloc(sizeof(GameState));
+    GameState* gs = (GameState*)malloc(sizeof(GameState));
     if (!gs) return NULL;
     gs->width = width;
     gs->height = height;
@@ -433,9 +434,9 @@ static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int w
     gs->pathIndex = 0;
     gs->path[0] = '\0';
     /* init map */
-    for (int y=0;y<MAX_HEIGHT;y++) for (int x=0;x<MAX_WIDTH;x++) gs->map[y][x] = ' ';
-    for (int y=0;y<height && y<MAX_HEIGHT;y++) {
-        for (int x=0;x<width && x<MAX_WIDTH;x++) {
+    for (int y = 0; y < MAX_HEIGHT; y++) for (int x = 0; x < MAX_WIDTH; x++) gs->map[y][x] = ' ';
+    for (int y = 0; y < height && y < MAX_HEIGHT; y++) {
+        for (int x = 0; x < width && x < MAX_WIDTH; x++) {
             gs->map[y][x] = src[y][x];
             if (gs->map[y][x] == 'T') gs->treasures_total++;
         }
@@ -452,17 +453,17 @@ static GameState* game_create_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int w
     return gs;
 }
 
-static void game_destroy(GameState *gs) {
+static void game_destroy(GameState* gs) {
     if (!gs) return;
     free_all(gs->current);
     free(gs);
 }
 
-static int game_undo(GameState *gs) {
+static int game_undo(GameState* gs) {
     if (!gs || !gs->current) return 0;
     if (gs->current->prev) {
         gs->current = gs->current->prev;
-        for (int yy=0; yy<gs->height; yy++) for (int xx=0; xx<gs->width; xx++) gs->map[yy][xx] = gs->current->mapSnapshot[yy * gs->width + xx];
+        for (int yy = 0; yy < gs->height; yy++) for (int xx = 0; xx < gs->width; xx++) gs->map[yy][xx] = gs->current->mapSnapshot[yy * gs->width + xx];
         gs->playerX = gs->current->playerX; gs->playerY = gs->current->playerY; gs->underPlayer = gs->current->underPlayer;
         gs->consume_HP = gs->current->consume_HP; gs->step = gs->current->step; gs->treasures_found = gs->current->treasures_found;
         gs->pathIndex = gs->current->pathIndex; memcpy(gs->path, gs->current->pathBuf, gs->pathSize);
@@ -472,11 +473,11 @@ static int game_undo(GameState *gs) {
     return 0;
 }
 
-static int game_redo(GameState *gs) {
+static int game_redo(GameState* gs) {
     if (!gs || !gs->current) return 0;
     if (gs->current->next) {
         gs->current = gs->current->next;
-        for (int yy=0; yy<gs->height; yy++) for (int xx=0; xx<gs->width; xx++) gs->map[yy][xx] = gs->current->mapSnapshot[yy * gs->width + xx];
+        for (int yy = 0; yy < gs->height; yy++) for (int xx = 0; xx < gs->width; xx++) gs->map[yy][xx] = gs->current->mapSnapshot[yy * gs->width + xx];
         gs->playerX = gs->current->playerX; gs->playerY = gs->current->playerY; gs->underPlayer = gs->current->underPlayer;
         gs->consume_HP = gs->current->consume_HP; gs->step = gs->current->step; gs->treasures_found = gs->current->treasures_found;
         gs->pathIndex = gs->current->pathIndex; memcpy(gs->path, gs->current->pathBuf, gs->pathSize);
@@ -507,7 +508,7 @@ static int game_apply_move(GameState* gs, char mv) {
         if (gs->current) free_forward(gs->current);
         if (gs->pathIndex + 1 < gs->pathSize) { gs->path[gs->pathIndex++] = mv; gs->path[gs->pathIndex] = '\0'; }
         gs->consume_HP++; gs->step++;
-        StateNode *n = create_node_from_state(gs->map, gs->width, gs->height, curX, curY, gs->underPlayer,
+        StateNode* n = create_node_from_state(gs->map, gs->width, gs->height, curX, curY, gs->underPlayer,
             gs->consume_HP, gs->step, gs->treasures_found, gs->pathIndex, gs->path, gs->pathSize);
         if (n) { n->prev = gs->current; if (gs->current) gs->current->next = n; gs->current = n; }
         return 0;
@@ -531,13 +532,13 @@ static int game_apply_move(GameState* gs, char mv) {
     int newX = gs->playerX, newY = gs->playerY; clamp_to_bounds(gs, &newX, &newY);
     gs->map[newY][newX] = 'P';
     if (gs->underPlayer == 'T') { gs->treasures_found++; gs->underPlayer = ' '; }
-    int dx[4] = {0,0,-1,1}, dy[4] = {-1,1,0,0};
-    for (int k=0;k<4;k++){
+    int dx[4] = { 0,0,-1,1 }, dy[4] = { -1,1,0,0 };
+    for (int k = 0; k < 4; k++) {
         int tx = gs->playerX + dx[k], ty = gs->playerY + dy[k];
-        if (tx>=0 && tx<gs->width && ty>=0 && ty<gs->height && gs->map[ty][tx]=='T') { gs->treasures_found++; gs->map[ty][tx] = ' '; }
+        if (tx >= 0 && tx < gs->width && ty >= 0 && ty < gs->height && gs->map[ty][tx] == 'T') { gs->treasures_found++; gs->map[ty][tx] = ' '; }
     }
 
-    StateNode *n = create_node_from_state(gs->map, gs->width, gs->height, gs->playerX, gs->playerY, gs->underPlayer,
+    StateNode* n = create_node_from_state(gs->map, gs->width, gs->height, gs->playerX, gs->playerY, gs->underPlayer,
         gs->consume_HP, gs->step, gs->treasures_found, gs->pathIndex, gs->path, gs->pathSize);
     if (n) { n->prev = gs->current; if (gs->current) gs->current->next = n; gs->current = n; }
 
@@ -545,10 +546,10 @@ static int game_apply_move(GameState* gs, char mv) {
     return 0;
 }
 
-static int game_save(GameState *gs, const char* mapFile) {
+static int game_save(GameState* gs, const char* mapFile) {
     if (!gs) return 0;
-    char *sfname = save_filename(mapFile);
-    FILE *sf = NULL;
+    char* sfname = save_filename(mapFile);
+    FILE* sf = NULL;
     if (fopen_s(&sf, sfname, "wb") != 0 || !sf) return 0;
     long long ts = (long long)time(NULL);
     fwrite(&ts, sizeof(ts), 1, sf);
@@ -564,9 +565,9 @@ static int game_save(GameState *gs, const char* mapFile) {
     fwrite(&gs->underPlayer, sizeof(gs->underPlayer), 1, sf);
     fwrite(&gs->pathIndex, sizeof(gs->pathIndex), 1, sf);
     fwrite(gs->path, 1, gs->pathSize, sf);
-    for (int yy=0; yy<gs->height; yy++) for (int xx=0; xx<gs->width; xx++) {
-        char ch = (yy==gs->playerY && xx==gs->playerX) ? gs->underPlayer : gs->map[yy][xx];
-        fwrite(&ch,1,1,sf);
+    for (int yy = 0; yy < gs->height; yy++) for (int xx = 0; xx < gs->width; xx++) {
+        char ch = (yy == gs->playerY && xx == gs->playerX) ? gs->underPlayer : gs->map[yy][xx];
+        fwrite(&ch, 1, 1, sf);
     }
     fclose(sf);
     return 1;
@@ -576,7 +577,7 @@ static void append_leaderboard_entry(const char* mapFile, const char* name, int 
     if (!mapFile || !name) return;
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "%s\\leaderboard_%s.txt", get_exe_dir(), mapFile);
-    FILE *f = NULL;
+    FILE* f = NULL;
     if (fopen_s(&f, path, "a") != 0 || !f) return;
     long long ts = (long long)time(NULL);
     fprintf(f, "%lld\t%s\t%d\n", ts, name, consume_HP);
@@ -587,19 +588,19 @@ void show_leaderboard_for_map(const char* mapFile) {
     if (!mapFile) return;
     char path[MAX_PATH];
     snprintf(path, sizeof(path), "%s\\leaderboard_%s.txt", get_exe_dir(), mapFile);
-    FILE *f = NULL;
+    FILE* f = NULL;
     if (fopen_s(&f, path, "r") != 0 || !f) {
-        printf("该关卡暂无排行榜记录。\n按回车返回。");
-        getchar();
+        printf("该关卡暂无排行榜记录。\n");
+		system("pause");
         return;
     }
     typedef struct { long long ts; char name[128]; int hp; } Entry;
     Entry entries[256]; int ec = 0;
     char line[512];
     while (fgets(line, sizeof(line), f) && ec < 256) {
-        char *p = line;
-        char *saveptr = NULL;
-        char *tok = strtok_s(p, "\t\n\r", &saveptr);
+        char* p = line;
+        char* saveptr = NULL;
+        char* tok = strtok_s(p, "\t\n\r", &saveptr);
         if (!tok) continue;
         entries[ec].ts = _atoi64(tok);
         tok = strtok_s(NULL, "\t\n\r", &saveptr);
@@ -612,12 +613,12 @@ void show_leaderboard_for_map(const char* mapFile) {
     }
     fclose(f);
     if (ec == 0) {
-        printf("该关卡暂无排行榜记录。\n按回车返回。");
-        getchar();
+        printf("该关卡暂无排行榜记录。\n");
+		system("pause");
         return;
     }
     /* sort by hp ascending */
-    for (int i = 0; i < ec; ++i) for (int j = i+1; j < ec; ++j) {
+    for (int i = 0; i < ec; ++i) for (int j = i + 1; j < ec; ++j) {
         if (entries[j].hp < entries[i].hp) {
             Entry t = entries[i]; entries[i] = entries[j]; entries[j] = t;
         }
@@ -626,10 +627,9 @@ void show_leaderboard_for_map(const char* mapFile) {
     printf("排名\t挑战者\t消耗体力\n");
     int limit = ec < 50 ? ec : 50;
     for (int i = 0; i < limit; ++i) {
-        printf("%d\t%s\t%d\n", i+1, entries[i].name, entries[i].hp);
+        printf("%d\t%s\t%d\n", i + 1, entries[i].name, entries[i].hp);
     }
-    printf("按回车返回。");
-    getchar();
+    system("pause");
 }
 
 /* (previously had a forward declaration for an extracted run loop) */
@@ -638,7 +638,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     int consume_HP = 0;
     int step = 0;
     int treasures_found = 0;
-    char path[1000] = {0};
+    char path[1000] = { 0 };
     size_t pathSize = sizeof(path);
     size_t pathIndex = 0;
 
@@ -680,7 +680,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
     path[0] = '\0';
 
     /* use top-level StateNode and helper functions */
-    StateNode *current = NULL;
+    StateNode* current = NULL;
     /* push initial state */
     current = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
         consume_HP, step, treasures_found, pathIndex, path, pathSize);
@@ -764,7 +764,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 consume_HP++;
                 step++;
                 /* push new state */
-                StateNode *n = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
+                StateNode* n = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
                     consume_HP, step, treasures_found, pathIndex, path, pathSize);
                 if (n) {
                     /* attach */
@@ -830,7 +830,7 @@ void maps_from_buffer(char src[MAX_HEIGHT][MAX_WIDTH], int width, int height, in
                 }
             }
 
-            StateNode *n = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
+            StateNode* n = create_node_from_state(map, width, height, playerX, playerY, underPlayer,
                 consume_HP, step, treasures_found, pathIndex, path, pathSize);
             if (n) { n->prev = current; if (current) current->next = n; current = n; }
 
